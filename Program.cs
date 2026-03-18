@@ -1,9 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
-using Microsoft.OpenApi.Models;
 using TheNestAPI.Data;
-using TheNestAPI.Models;
-using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 

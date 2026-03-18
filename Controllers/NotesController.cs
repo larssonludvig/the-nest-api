@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using TheNestAPI.Data;
 using TheNestAPI.Models;
 using TheNestAPI.Domain;
+using TheNestAPI.Adapters;
+using System.Text.Json;
+using System.Net.Http.Headers;
 
 namespace TheNestAPI.Controllers
 {
@@ -50,7 +53,7 @@ namespace TheNestAPI.Controllers
                 return Unauthorized("Invalid auth token.");
             }
 
-            note = await addVODInfo(note);
+            note = await AddVODInfo(note);
 
             _context.Notes.Add(note);
             await _context.SaveChangesAsync();
@@ -61,7 +64,7 @@ namespace TheNestAPI.Controllers
         [HttpPut("bot")]
         public async Task<ActionResult<bool>> createNoteBot([FromBody] BotNote data)
         {
-            Note note = new Note
+            Note note = new()
             {
                 Description = data.Description,
                 Username = data.Username,
@@ -69,7 +72,7 @@ namespace TheNestAPI.Controllers
                 offset = 0
             };
 
-            note = await addVODInfo(note);
+            note = await AddVODInfo(note);
 
             _context.Notes.Add(note);
             await _context.SaveChangesAsync();
@@ -77,20 +80,21 @@ namespace TheNestAPI.Controllers
             return true;
         }
 
-        private async Task<Note> addVODInfo(Note note)
+        private async Task<Note> AddVODInfo(Note note)
         {
+            TwitchAdapter.Initialize(_configuration);
             using var client = new HttpClient();
-            string clientId = _configuration["Twitch:ClientId"];
-            string token = _configuration["Twitch:Token"];
+            string clientId = Environment.GetEnvironmentVariable("Twitch_ClientId") ?? "";
+            string token = await TwitchAdapter.RefreshAccessToken();
 
             client.DefaultRequestHeaders.Add("Client-ID", clientId);
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var response = await client.GetAsync($"https://api.twitch.tv/helix/streams?user_login=plopparntv");
 
             var content = await response.Content.ReadAsStringAsync();
 
-            var json = System.Text.Json.JsonDocument.Parse(content);
+            var json = JsonDocument.Parse(content);
             var data = json.RootElement.GetProperty("data");
 
             DateTime start = data[0].GetProperty("started_at").GetDateTime();
@@ -103,7 +107,7 @@ namespace TheNestAPI.Controllers
             response = await client.GetAsync($"https://api.twitch.tv/helix/videos?user_id={data[0].GetProperty("user_id").GetString()}");
             content = await response.Content.ReadAsStringAsync();
 
-            json = System.Text.Json.JsonDocument.Parse(content);
+            json = JsonDocument.Parse(content);
             data = json.RootElement.GetProperty("data");
 
             note.StreamId = data[0].GetProperty("id").ToString();
