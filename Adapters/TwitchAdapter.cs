@@ -1,17 +1,11 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using TheNestAPI.Models;
 
 namespace TheNestAPI.Adapters
 {
     public static class TwitchAdapter
     {
-        private static IConfiguration? _configuration;
-
-        public static void Initialize(IConfiguration configuration)
-        {
-            _configuration = configuration;
-        }
-
         public static async Task<bool> IsStreamerLive(string user)
         {
             HttpClient client = await SetupHttpClient();
@@ -27,6 +21,7 @@ namespace TheNestAPI.Adapters
         public static async Task<string?> CreateClip(string broadcasterId)
         {
             HttpClient client = await SetupHttpClient();
+
             HttpResponseMessage response = await client.PostAsync($"https://api.twitch.tv/helix/clips?broadcaster_id={broadcasterId}", null);
             string content = await response.Content.ReadAsStringAsync();
 
@@ -35,10 +30,50 @@ namespace TheNestAPI.Adapters
 
             if (data.GetArrayLength() > 0)
             {
-                return data[0].GetProperty("id").GetString();
+                return data[0].GetProperty("edit_url").GetString();
             }
 
             return null;
+        }
+
+        public static async Task<StreamInfo> GetStreamInfo(string user)
+        {
+            HttpClient client = await SetupHttpClient();
+
+            HttpResponseMessage response = await client.GetAsync($"https://api.twitch.tv/helix/streams?user_login={user}");
+            if (response.IsSuccessStatusCode)
+            {
+                string context = await response.Content.ReadAsStringAsync();
+                JsonDocument json = JsonDocument.Parse(context);
+                JsonElement data = json.RootElement.GetProperty("data");
+
+                if (data.GetArrayLength() > 0)
+                {
+                    return StreamInfo.ToDomain(data[0]);
+                }
+            }
+
+            throw new Exception($"Failed to get stream info for user {user}. {response}");
+        }
+
+        public static async Task<VodInfo> GetLatestVodInfo(string userId)
+        {
+            HttpClient client = await SetupHttpClient();
+
+            HttpResponseMessage response = await client.GetAsync($"https://api.twitch.tv/helix/videos?user_id={userId}");
+            if (response.IsSuccessStatusCode)
+            {
+                string context = await response.Content.ReadAsStringAsync();
+                JsonDocument json = JsonDocument.Parse(context);
+                JsonElement data = json.RootElement.GetProperty("data");
+
+                if (data.GetArrayLength() > 0)
+                {
+                    return VodInfo.ToDomain(data[0]);
+                }
+            }
+
+            throw new Exception($"Failed to get vod info for user {userId}. {response}");
         }
 
         private static async Task<HttpClient> SetupHttpClient()
@@ -53,7 +88,7 @@ namespace TheNestAPI.Adapters
             return client;
         }
 
-        public static async Task<string?> RefreshAccessToken()
+        private static async Task<string?> RefreshAccessToken()
         {
             HttpClient client = new();
             string clientId = Environment.GetEnvironmentVariable("Twitch_ClientId") ?? "";
@@ -69,7 +104,7 @@ namespace TheNestAPI.Adapters
             {
                 { "client_id", clientId },
                 { "client_secret", clientSecret },
-                { "grant_type", "client_credentials" },
+                { "grant_type", "refresh_token" },
                 { "refresh_token", refreshToken }
             };
 

@@ -4,8 +4,6 @@ using TheNestAPI.Data;
 using TheNestAPI.Models;
 using TheNestAPI.Domain;
 using TheNestAPI.Adapters;
-using System.Text.Json;
-using System.Net.Http.Headers;
 
 namespace TheNestAPI.Controllers
 {
@@ -39,8 +37,8 @@ namespace TheNestAPI.Controllers
             return await GetNonDeletedNotes();
         }
 
-        [HttpPut]
-        public async Task<ActionResult<List<Note>>> createNote([FromBody] Note note)
+        [HttpPut("clip")]
+        public async Task<ActionResult<string>> CreateClip([FromBody] BotNote data)
         {
             string authToken = Request.Headers["Authorization"];
             string storedToken = await _context.Generic
@@ -53,66 +51,32 @@ namespace TheNestAPI.Controllers
                 return Unauthorized("Invalid auth token.");
             }
 
-            note = await AddVODInfo(note);
+            StreamInfo streamInfo = await TwitchAdapter.GetStreamInfo("plopparntv");
+            VodInfo vodInfo = await TwitchAdapter.GetLatestVodInfo(streamInfo.UserId);
+            string? clipUri = await TwitchAdapter.CreateClip("475237486");
 
-            _context.Notes.Add(note);
-            await _context.SaveChangesAsync();
+            if (clipUri == null)
+            {
+                return BadRequest("Failed to create clip.");
+            }
 
-            return await GetNonDeletedNotes();
-        }
-
-        [HttpPut("bot")]
-        public async Task<ActionResult<bool>> createNoteBot([FromBody] BotNote data)
-        {
+            TimeSpan elapsed = DateTime.Now - streamInfo.StartTime;
             Note note = new()
             {
                 Description = data.Description,
                 Username = data.Username,
-                ClipURI = data.ClipURI,
+                ClipURI = clipUri,
+                Game = streamInfo.GameName,
+                ElapsedTime = $"{elapsed.Hours:D2}h{elapsed.Minutes:D2}m{elapsed.Seconds:D2}s",
+                Created = DateTime.Now,
+                StreamId = vodInfo.StreamId,
                 offset = 0
             };
-
-            note = await AddVODInfo(note);
 
             _context.Notes.Add(note);
             await _context.SaveChangesAsync();
 
-            return true;
-        }
-
-        private async Task<Note> AddVODInfo(Note note)
-        {
-            TwitchAdapter.Initialize(_configuration);
-            using var client = new HttpClient();
-            string clientId = Environment.GetEnvironmentVariable("Twitch_ClientId") ?? "";
-            string token = await TwitchAdapter.RefreshAccessToken();
-
-            client.DefaultRequestHeaders.Add("Client-ID", clientId);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await client.GetAsync($"https://api.twitch.tv/helix/streams?user_login=plopparntv");
-
-            var content = await response.Content.ReadAsStringAsync();
-
-            var json = JsonDocument.Parse(content);
-            var data = json.RootElement.GetProperty("data");
-
-            DateTime start = data[0].GetProperty("started_at").GetDateTime();
-            DateTime now = DateTime.Now;
-            TimeSpan elapsed = now - start;
-            note.ElapsedTime = $"{elapsed.Hours:D2}h{elapsed.Minutes:D2}m{elapsed.Seconds:D2}s";
-            note.Game = data[0].GetProperty("game_name").GetString();
-            note.Created = DateTime.Now;
-
-            response = await client.GetAsync($"https://api.twitch.tv/helix/videos?user_id={data[0].GetProperty("user_id").GetString()}");
-            content = await response.Content.ReadAsStringAsync();
-
-            json = JsonDocument.Parse(content);
-            data = json.RootElement.GetProperty("data");
-
-            note.StreamId = data[0].GetProperty("id").ToString();
-
-            return note;
+            return clipUri;
         }
 
         [HttpPost("{id}/used")]
