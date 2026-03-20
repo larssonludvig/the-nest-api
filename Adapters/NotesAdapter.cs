@@ -17,16 +17,6 @@ namespace TheNestAPI.Adapters
             _context = context;
         }
 
-        public static async Task<bool> IsAuthorized(string authToken)
-        {
-            string storedToken = await _context.Generic
-                .Where(x => x.Key == "notesAuth")
-                .Select(x => x.Value)
-                .FirstOrDefaultAsync();
-
-            return !(storedToken == null || authToken != storedToken);
-        }
-
         public static async Task<List<Note>> GetNotes()
         {
             return await _context.Notes

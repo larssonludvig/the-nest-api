@@ -21,7 +21,7 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<List<Note>>> GetNotes()
         {
             string authToken = Request.Headers["Authorization"];
-            if (!await NotesAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -33,7 +33,7 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<string>> CreateClip([FromBody] BotNote data)
         {
             string authToken = Request.Headers["Authorization"];
-            if (!await NotesAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -68,7 +68,7 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<List<Note>>> ToggleUsedStatus(int id)
         {
             string authToken = Request.Headers["Authorization"];
-            if (!await NotesAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -85,7 +85,7 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<List<Note>>> ToggleProcessedStatus(int id)
         {
             string authToken = Request.Headers["Authorization"];
-            if (!await NotesAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -102,7 +102,7 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<List<Note>>> ToggleDeletedStatus(int id)
         {
             string authToken = Request.Headers["Authorization"];
-            if (!await NotesAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
