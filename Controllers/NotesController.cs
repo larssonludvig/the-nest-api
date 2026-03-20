@@ -14,6 +14,7 @@ namespace TheNestAPI.Controllers
     {
         public NotesController(ApplicationDbContext context)
         {
+            DbAdapter.Initialize(context);
             NotesAdapter.Initialize(context);
         }
 

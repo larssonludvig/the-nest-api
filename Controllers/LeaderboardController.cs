@@ -6,6 +6,8 @@ using TheNestAPI.Domain;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
+using TheNestAPI.Adapters;
 
 namespace TheNestAPI.Controllers
 {
@@ -154,11 +156,7 @@ namespace TheNestAPI.Controllers
                 name = "PlopparnTV";
             }
 
-            using var client = new HttpClient();
-            var response = await client.GetAsync($"https://api.the-finals-leaderboard.com/v1/leaderboard/s9/crossplay");
-            var content = await response.Content.ReadAsStringAsync();
-            var json = System.Text.Json.JsonDocument.Parse(content);
-            var data = json.RootElement.GetProperty("data");
+            JsonElement data = await LeaderboardAdapter.GetLeaderboard();
 
             foreach (var item in data.EnumerateArray())
             {
@@ -174,11 +172,7 @@ namespace TheNestAPI.Controllers
         [Route("ruby/string")]
         public async Task<string> getUserString()
         {
-            using var client = new HttpClient();
-            var response = await client.GetAsync($"https://api.the-finals-leaderboard.com/v1/leaderboard/s9/crossplay");
-            var content = await response.Content.ReadAsStringAsync();
-            var json = System.Text.Json.JsonDocument.Parse(content);
-            var data = json.RootElement.GetProperty("data");
+            JsonElement data = await LeaderboardAdapter.GetLeaderboard();
 
             var last = data[500];
 
@@ -194,11 +188,7 @@ namespace TheNestAPI.Controllers
                 name = "PlopparnTV";
             }
 
-            using var client = new HttpClient();
-            var response = await client.GetAsync($"https://api.the-finals-leaderboard.com/v1/leaderboard/s9worldtour/crossplay");
-            var content = await response.Content.ReadAsStringAsync();
-            var json = System.Text.Json.JsonDocument.Parse(content);
-            var data = json.RootElement.GetProperty("data");
+            JsonElement data = await LeaderboardAdapter.GetLeaderboard("worldtour");
 
             foreach (var item in data.EnumerateArray())
             {
@@ -219,11 +209,7 @@ namespace TheNestAPI.Controllers
                 name = "PlopparnTV";
             }
 
-            using var client = new HttpClient();
-            var response = await client.GetAsync($"https://api.the-finals-leaderboard.com/v1/leaderboard/s9teamdeathmatch/crossplay");
-            var content = await response.Content.ReadAsStringAsync();
-            var json = System.Text.Json.JsonDocument.Parse(content);
-            var data = json.RootElement.GetProperty("data");
+            JsonElement data = await LeaderboardAdapter.GetLeaderboard("teamdeathmatch");
 
             foreach (var item in data.EnumerateArray())
             {
