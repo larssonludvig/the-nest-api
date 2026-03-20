@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TheNestAPI.Data;
 using TheNestAPI.Models;
+using TheNestAPI.Models.Twitch;
 using TheNestAPI.Domain;
 using TheNestAPI.Adapters;
 
@@ -11,42 +12,28 @@ namespace TheNestAPI.Controllers
     [Route("notes")]
     public class NotesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IConfiguration _configuration;
-
-        public NotesController(ApplicationDbContext context, IConfiguration configuration)
+        public NotesController(ApplicationDbContext context)
         {
-            _context = context;
-            _configuration = configuration;
+            NotesAdapter.Initialize(context);
         }
 
         [HttpGet]
         public async Task<ActionResult<List<Note>>> GetNotes()
         {
             string authToken = Request.Headers["Authorization"];
-            string storedToken = await _context.Generic
-                .Where(x => x.Key == "notesAuth")
-                .Select(x => x.Value)
-                .FirstOrDefaultAsync();
-
-            if (storedToken == null || authToken != storedToken)
+            if (!await NotesAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
 
-            return await GetNonDeletedNotes();
+            return await NotesAdapter.GetNotes();
         }
 
         [HttpPut("clip")]
         public async Task<ActionResult<string>> CreateClip([FromBody] BotNote data)
         {
             string authToken = Request.Headers["Authorization"];
-            string storedToken = await _context.Generic
-                .Where(x => x.Key == "notesAuth")
-                .Select(x => x.Value)
-                .FirstOrDefaultAsync();
-
-            if (storedToken == null || authToken != storedToken)
+            if (!await NotesAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -73,9 +60,7 @@ namespace TheNestAPI.Controllers
                 offset = 0
             };
 
-            _context.Notes.Add(note);
-            await _context.SaveChangesAsync();
-
+            await NotesAdapter.SaveNote(note);
             return clipUri;
         }
 
@@ -83,27 +68,14 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<List<Note>>> ToggleUsedStatus(int id)
         {
             string authToken = Request.Headers["Authorization"];
-            string storedToken = await _context.Generic
-                .Where(x => x.Key == "notesAuth")
-                .Select(x => x.Value)
-                .FirstOrDefaultAsync();
-
-            if (storedToken == null || authToken != storedToken)
+            if (!await NotesAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
 
-            var entity = await _context.Notes
-                .Where(x => x.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (entity != null)
+            if (await NotesAdapter.ToggleNoteUsed(id))
             {
-                entity.Used = !entity.Used;
-                await _context.SaveChangesAsync();
-                return await _context.Notes
-                    .Where(x => x.Id == id)
-                    .ToListAsync();
+                return await NotesAdapter.GetNotes();
             }
 
             return NotFound($"No note with id \"{id}\" found.");
@@ -113,27 +85,14 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<List<Note>>> ToggleProcessedStatus(int id)
         {
             string authToken = Request.Headers["Authorization"];
-            string storedToken = await _context.Generic
-                .Where(x => x.Key == "notesAuth")
-                .Select(x => x.Value)
-                .FirstOrDefaultAsync();
-
-            if (storedToken == null || authToken != storedToken)
+            if (!await NotesAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
 
-            var entity = await _context.Notes
-                .Where(x => x.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (entity != null)
+            if (await NotesAdapter.ToggleNoteProcessed(id))
             {
-                entity.Processed = !entity.Processed;
-                await _context.SaveChangesAsync();
-                return await _context.Notes
-                    .Where(x => x.Id == id)
-                    .ToListAsync();
+                return await NotesAdapter.GetNotes();
             }
 
             return NotFound($"No note with id \"{id}\" found.");
@@ -143,25 +102,14 @@ namespace TheNestAPI.Controllers
         public async Task<ActionResult<List<Note>>> ToggleDeletedStatus(int id)
         {
             string authToken = Request.Headers["Authorization"];
-            string storedToken = await _context.Generic
-                .Where(x => x.Key == "notesAuth")
-                .Select(x => x.Value)
-                .FirstOrDefaultAsync();
-
-            if (storedToken == null || authToken != storedToken)
+            if (!await NotesAdapter.IsAuthorized(authToken))
             {
                 return Unauthorized("Invalid auth token.");
             }
 
-            var entity = await _context.Notes
-                .Where(x => x.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (entity != null)
+            if (await NotesAdapter.ToggleNoteDeleted(id))
             {
-                entity.Deleted = !entity.Deleted;
-                await _context.SaveChangesAsync();
-                return await GetNonDeletedNotes();
+                return await NotesAdapter.GetNotes();
             }
 
             return NotFound($"No note with id \"{id}\" found.");
@@ -170,27 +118,7 @@ namespace TheNestAPI.Controllers
         [HttpGet("{user}")]
         public async Task<ActionResult<int>> GetUserNoteUsedCount(string user)
         {
-            return await _context.Notes
-                .Where(
-                    x => x.Username.ToLower() == user.ToLower() &&
-                    x.Used == true &&
-                    x.Deleted == false
-                ).CountAsync();
-        }
-
-        private async Task<List<Note>> GetNonDeletedNotes()
-        {
-            return await _context.Notes
-                .Where(x =>
-                    x.Deleted == false &&
-                    (DateTime.Compare(DateTime.Now.AddDays(-14), x.Created ?? DateTime.Now.AddDays(-15)) <= 0 || x.ClipURI != null)
-                )
-                .ToListAsync();
-        }
-
-        private bool LessThanTwoWeeks(DateTime date)
-        {
-            return DateTime.Compare(DateTime.Now.AddDays(-14), date) <= 0;
+            return await NotesAdapter.GetNotesUsedCount(user);
         }
     }
 }
