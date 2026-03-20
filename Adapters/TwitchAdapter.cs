@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using TheNestAPI.Models;
+using TheNestAPI.Models.Twitch;
 
 namespace TheNestAPI.Adapters
 {

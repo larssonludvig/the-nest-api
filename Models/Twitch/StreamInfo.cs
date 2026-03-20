@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace TheNestAPI.Models
+namespace TheNestAPI.Models.Twitch
 {
     public class StreamInfo
     {
