@@ -1,10 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TheNestAPI.Data;
 using TheNestAPI.Models;
-using TheNestAPI.Models.Twitch;
-using TheNestAPI.Domain;
-using TheNestAPI.Adapters;
 
 namespace TheNestAPI.Adapters
 {
@@ -19,8 +15,8 @@ namespace TheNestAPI.Adapters
 
         public static async Task<List<Note>> GetNotes()
         {
-            return await _context.Notes
-                .Where(x => 
+            return await _context?.Notes
+                .Where(x =>
                     !x.Deleted &&
                     (
                         DateTime.Compare(DateTime.Now.AddDays(-14), x.Created ?? DateTime.Now.AddDays(-15)) <= 0 ||
@@ -40,7 +36,7 @@ namespace TheNestAPI.Adapters
         public static async Task SaveNote(Note note)
         {
             _context.Notes.Add(note);
-            await SaveChanges();
+            await DbAdapter.SaveChanges();
         }
 
         public static async Task<int> GetNotesUsedCount(string user)
@@ -60,7 +56,7 @@ namespace TheNestAPI.Adapters
                 return false;
 
             note.Used = !note.Used;
-            await SaveChanges();
+            await DbAdapter.SaveChanges();
             return true;
         }
 
@@ -71,7 +67,7 @@ namespace TheNestAPI.Adapters
                 return false;
 
             note.Processed = !note.Processed;
-            await SaveChanges();
+            await DbAdapter.SaveChanges();
             return true;
         }
 
@@ -82,13 +78,8 @@ namespace TheNestAPI.Adapters
                 return false;
 
             note.Deleted = !note.Deleted;
-            await SaveChanges();
+            await DbAdapter.SaveChanges();
             return true;
-        }
-
-        private static async Task SaveChanges()
-        {
-            await _context.SaveChangesAsync();
         }
     }
 }

@@ -3,13 +3,8 @@ using TheNestAPI.Models;
 
 namespace TheNestAPI.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
-        {
-        }
-
         public DbSet<Leaderboard> Leaderboard { get; set; }
         public DbSet<LeaderboardS6> LeaderboardS6 { get; set; }
         public DbSet<LeaderboardS7> LeaderboardS7 { get; set; }
@@ -25,5 +20,6 @@ namespace TheNestAPI.Data
         public DbSet<Clubs> Clubs { get; set; }
         public DbSet<Note> Notes { get; set; }
         public DbSet<Generic> Generic { get; set; }
+        public DbSet<Link> Links { get; set; }
     }
 }

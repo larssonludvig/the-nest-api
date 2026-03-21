@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TheNestAPI.Data;
 using TheNestAPI.Models;
 using TheNestAPI.Models.Twitch;
@@ -16,13 +15,13 @@ namespace TheNestAPI.Controllers
         {
             DbAdapter.Initialize(context);
             NotesAdapter.Initialize(context);
+            LinksAdapter.Initialize(context);
         }
 
         [HttpGet]
         public async Task<ActionResult<List<Note>>> GetNotes()
         {
-            string authToken = Request.Headers["Authorization"];
-            if (!await DbAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(Request))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -33,43 +32,53 @@ namespace TheNestAPI.Controllers
         [HttpPut("clip")]
         public async Task<ActionResult<string>> CreateClip([FromBody] BotNote data)
         {
-            string authToken = Request.Headers["Authorization"];
-            if (!await DbAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(Request))
             {
                 return Unauthorized("Invalid auth token.");
             }
 
-            StreamInfo streamInfo = await TwitchAdapter.GetStreamInfo("plopparntv");
-            VodInfo vodInfo = await TwitchAdapter.GetLatestVodInfo(streamInfo.UserId);
-            string? clipUri = await TwitchAdapter.CreateClip("475237486");
-
-            if (clipUri == null)
+            Console.WriteLine($"Creating clip for note: {data.Description} by {data.Username}");
+            try
             {
-                return BadRequest("Failed to create clip.");
+                StreamInfo streamInfo = await TwitchAdapter.GetStreamInfo("plopparntv");
+                VodInfo vodInfo = await TwitchAdapter.GetLatestVodInfo(streamInfo.UserId);
+                
+                string? clipUri = await TwitchAdapter.CreateClip("475237486");
+                Console.WriteLine($"Clip URI: {clipUri}");
+                if (clipUri == null)
+                {
+                    return BadRequest("Failed to create clip.");
+                }
+
+                string shortenedClipUri = await LinksAdapter.SaveLink(clipUri);
+                Console.WriteLine($"Shortened Clip URI: {shortenedClipUri}");
+
+                TimeSpan elapsed = DateTime.Now - streamInfo.StartTime;
+                Note note = new()
+                {
+                    Description = data.Description,
+                    Username = data.Username,
+                    ClipURI = clipUri,
+                    Game = streamInfo.GameName,
+                    ElapsedTime = $"{elapsed.Hours:D2}h{elapsed.Minutes:D2}m{elapsed.Seconds:D2}s",
+                    Created = DateTime.Now,
+                    StreamId = vodInfo.StreamId,
+                    offset = 0
+                };
+
+                await NotesAdapter.SaveNote(note);
+                return $"https://plopparn.tv/clips/{shortenedClipUri}";
+            } catch (Exception)
+            {
+                return BadRequest($"Failed to create note.");
             }
 
-            TimeSpan elapsed = DateTime.Now - streamInfo.StartTime;
-            Note note = new()
-            {
-                Description = data.Description,
-                Username = data.Username,
-                ClipURI = clipUri,
-                Game = streamInfo.GameName,
-                ElapsedTime = $"{elapsed.Hours:D2}h{elapsed.Minutes:D2}m{elapsed.Seconds:D2}s",
-                Created = DateTime.Now,
-                StreamId = vodInfo.StreamId,
-                offset = 0
-            };
-
-            await NotesAdapter.SaveNote(note);
-            return clipUri;
         }
 
         [HttpPost("{id}/used")]
         public async Task<ActionResult<List<Note>>> ToggleUsedStatus(int id)
         {
-            string authToken = Request.Headers["Authorization"];
-            if (!await DbAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(Request))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -85,8 +94,7 @@ namespace TheNestAPI.Controllers
         [HttpPost("{id}/processed")]
         public async Task<ActionResult<List<Note>>> ToggleProcessedStatus(int id)
         {
-            string authToken = Request.Headers["Authorization"];
-            if (!await DbAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(Request))
             {
                 return Unauthorized("Invalid auth token.");
             }
@@ -102,8 +110,7 @@ namespace TheNestAPI.Controllers
         [HttpPost("{id}/delete")]
         public async Task<ActionResult<List<Note>>> ToggleDeletedStatus(int id)
         {
-            string authToken = Request.Headers["Authorization"];
-            if (!await DbAdapter.IsAuthorized(authToken))
+            if (!await DbAdapter.IsAuthorized(Request))
             {
                 return Unauthorized("Invalid auth token.");
             }

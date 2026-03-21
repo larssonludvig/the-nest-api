@@ -17,14 +17,25 @@ namespace TheNestAPI.Adapters
             _context = context;
         }
 
-        public static async Task<bool> IsAuthorized(string authToken)
+        public static async Task<bool> IsAuthorized(HttpRequest request)
         {
-            string storedToken = await _context.Generic
+            string authToken = request.Headers["Authorization"].FirstOrDefault() ?? "";
+            string? storedToken = await _context.Generic
                 .Where(x => x.Key == "notesAuth")
                 .Select(x => x.Value)
                 .FirstOrDefaultAsync();
 
             return !(storedToken == null || authToken != storedToken);
+        }
+
+        public static async Task SaveChanges()
+        {
+            try {
+                await _context.SaveChangesAsync();
+            } catch (Exception ex)
+            {
+                throw ex;
+            }
         }
     }
 }
