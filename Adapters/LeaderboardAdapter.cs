@@ -13,7 +13,7 @@ namespace TheNestAPI.Adapters
     {
         private static ApplicationDbContext _context;
 
-        private static readonly string SEASON = "s9";
+        private static readonly string SEASON = "s10";
 
         public static void Initialize(ApplicationDbContext context)
         {

@@ -114,7 +114,7 @@ namespace TheNestAPI.Controllers
             if (user == null)
                 return NotFound($"User {name} not found.");
 
-            var result = await (from leaderboard in _context.LeaderboardS9
+            var result = await (from leaderboard in _context.LeaderboardS10
                                 join league in _context.Leagues
                                 on leaderboard.LeagueNumber equals league.Id
                                 where leaderboard.Name == name
