@@ -62,7 +62,7 @@ namespace TheNestAPI.Controllers
                     Game = streamInfo.GameName,
                     ElapsedTime = $"{elapsed.Hours:D2}h{elapsed.Minutes:D2}m{elapsed.Seconds:D2}s",
                     Created = DateTime.Now,
-                    StreamId = vodInfo.StreamId,
+                    StreamId = vodInfo.Url.Replace("https://www.twitch.tv/videos/", ""),
                     offset = 0
                 };
 
